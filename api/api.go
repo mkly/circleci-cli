@@ -198,6 +198,23 @@ type NamespaceOrbResponse struct {
 	}
 }
 
+// NamespaceOrbVersionResponse type mat
+type NamespaceOrbVersionResponse struct {
+	RegistryNamespace struct {
+		Name string
+		ID   string
+		Orbs struct {
+			Edges []struct {
+				Cursor string
+				Node   Orb
+			}
+			PageInfo struct {
+				HasNextPage bool
+			}
+		}
+	}
+}
+
 // OrbListResponse type matches the result from GQL.
 // So that we can use mapstructure to convert from nested maps to a strongly typed struct.
 type OrbListResponse struct {
@@ -512,6 +529,44 @@ func OrbQuery(cl *graphql.Client, configPath string) (*ConfigResponse, error) {
 	return &response.OrbConfig.ConfigResponse, nil
 }
 
+// OrbPublishWithSource publishes a new version of an orb using the provided source and id.
+func OrbPublishWithSource(cl *graphql.Client, orbSrc string, orbID string, orbVersion string) (*Orb, error) {
+	var response OrbPublishResponse
+
+	query := `
+		mutation($config: String!, $orbId: UUID!, $version: String!) {
+			publishOrb(
+				orbId: $orbId,
+				orbYaml: $config,
+				version: $version
+			) {
+				orb {
+					version
+				}
+				errors { message }
+			}
+		}
+	`
+
+	request := graphql.NewRequest(query)
+	request.SetToken(cl.Token)
+
+	request.Var("config", orbSrc)
+	request.Var("orbId", orbID)
+	request.Var("version", orbVersion)
+
+	err := cl.Run(request, &response)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to publish orb with source")
+	}
+
+	if len(response.PublishOrb.Errors) > 0 {
+		return nil, response.PublishOrb.Errors
+	}
+
+	return &response.PublishOrb.Orb, nil
+}
+
 // OrbPublishByID publishes a new version of an orb by id
 func OrbPublishByID(cl *graphql.Client, configPath string, orbID string, orbVersion string) (*Orb, error) {
 	var response OrbPublishResponse
@@ -554,6 +609,36 @@ func OrbPublishByID(cl *graphql.Client, configPath string, orbID string, orbVers
 	}
 
 	return &response.PublishOrb.Orb, nil
+}
+
+// OrbExists checks whether an orb exists within the provided namespace.
+func OrbExists(cl *graphql.Client, namespace string, orb string) (bool, error) {
+	name := namespace + "/" + orb
+
+	var response OrbIDResponse
+
+	query := `
+	query ($name: String!, $namespace: String) {
+		orb(name: $name) {
+		  id
+		}
+		registryNamespace(name: $namespace) {
+			id
+		  }
+	  }
+	  `
+
+	request := graphql.NewRequest(query)
+	request.SetToken(cl.Token)
+	request.Var("name", name)
+	request.Var("namespace", namespace)
+
+	err := cl.Run(request, &response)
+	if err != nil {
+		return false, err
+	}
+
+	return response.Orb.ID != "", nil
 }
 
 // OrbID fetches an orb returning the ID
@@ -711,6 +796,34 @@ func GetNamespace(cl *graphql.Client, name string) (*GetNamespaceResponse, error
 	}
 
 	return &response, nil
+}
+
+// NamespaceExists returns a boolean indicating if the provided namespace exists.
+func NamespaceExists(cl *graphql.Client, namespace string) (bool, error) {
+	var response GetNamespaceResponse
+
+	query := `
+				query($name: String!) {
+					registryNamespace(
+						name: $name
+					){
+						id
+					}
+			 }`
+
+	request := graphql.NewRequest(query)
+	request.SetToken(cl.Token)
+	request.Var("name", namespace)
+
+	if err := cl.Run(request, &response); err != nil {
+		return false, errors.Wrapf(err, "failed to load namespace '%s'", err)
+	}
+
+	if response.RegistryNamespace.ID != "" {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func createOrbWithNsID(cl *graphql.Client, name string, namespaceID string) (*CreateOrbResponse, error) {
@@ -988,6 +1101,16 @@ func OrbSource(cl *graphql.Client, orbRef string) (string, error) {
 	return response.OrbVersion.Source, nil
 }
 
+// ErrOrbVersionNotExists ...
+type ErrOrbVersionNotExists struct {
+	OrbRef string
+}
+
+// Error ...
+func (e *ErrOrbVersionNotExists) Error() string {
+	return fmt.Sprintf("no Orb '%s' was found; please check that the Orb reference is correct", e.OrbRef)
+}
+
 // OrbInfo gets the meta-data of an orb
 func OrbInfo(cl *graphql.Client, orbRef string) (*OrbVersion, error) {
 	if err := references.IsOrbRefWithOptionalVersion(orbRef); err != nil {
@@ -1007,7 +1130,8 @@ func OrbInfo(cl *graphql.Client, orbRef string) (*OrbVersion, error) {
                                 orb {
                                     id
                                     createdAt
-                                    name
+									name
+									namespace
                                     categories {
                                       id
                                       name
@@ -1036,7 +1160,9 @@ func OrbInfo(cl *graphql.Client, orbRef string) (*OrbVersion, error) {
 	}
 
 	if response.OrbVersion.ID == "" {
-		return nil, fmt.Errorf("no Orb '%s' was found; please check that the Orb reference is correct", orbRef)
+		return nil, &ErrOrbVersionNotExists{
+			OrbRef: ref,
+		}
 	}
 
 	if len(response.OrbVersion.Orb.Versions) > 0 {
@@ -1129,6 +1255,75 @@ query ListOrbs ($after: String!, $certifiedOnly: Boolean!) {
 		}
 	}
 	return &orbs, nil
+}
+
+// ListNamespaceOrbVersions ...
+func ListNamespaceOrbVersions(cl *graphql.Client, namespace string) ([]OrbVersion, error) {
+	query := `
+query namespaceOrbs ($namespace: String, $after: String!) {
+		registryNamespace(name: $namespace) {
+			name
+			id
+			orbs(first: 20, after: $after) {
+				edges {
+					cursor
+					node {
+						versions(count: 1) {
+							source
+							id
+							version
+							createdAt
+						}
+						name
+						id
+						createdAt
+					}
+				}
+				pageInfo {
+					hasNextPage
+				}
+			}
+		}
+	}
+`
+	var orbVersions []OrbVersion
+	var result NamespaceOrbVersionResponse
+	var currentCursor string
+
+	for {
+		request := graphql.NewRequest(query)
+		request.Var("after", currentCursor)
+		request.Var("namespace", namespace)
+
+		err := cl.Run(request, &result)
+		if err != nil {
+			return nil, errors.Wrap(err, "GraphQL query failed")
+		}
+
+		if result.RegistryNamespace.ID == "" {
+			return nil, errors.New("No namespace found")
+		}
+
+		for _, edge := range result.RegistryNamespace.Orbs.Edges {
+			currentCursor = edge.Cursor
+
+			orb := Orb{
+				Name:      edge.Node.Name,
+				Namespace: result.RegistryNamespace.Name,
+			}
+
+			for _, v := range edge.Node.Versions {
+				v.Orb = orb
+				orbVersions = append(orbVersions, v)
+			}
+		}
+
+		if !result.RegistryNamespace.Orbs.PageInfo.HasNextPage {
+			break
+		}
+	}
+
+	return orbVersions, nil
 }
 
 // ListNamespaceOrbs queries the API to find all orbs belonging to the given
