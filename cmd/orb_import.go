@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/CircleCI-Public/circleci-cli/api"
 	"github.com/CircleCI-Public/circleci-cli/api/graphql"
-	"github.com/pkg/errors"
 )
 
 type orbImportPlan struct {
@@ -27,7 +28,7 @@ func importOrb(opts orbOptions) error {
 		return err
 	}
 
-	displayPlan(plan)
+	displayPlan(os.Stdout, plan)
 	if !opts.noPrompt && !opts.tty.askUserToConfirm("Are you sure you would like to proceed?") {
 		return nil
 	}
@@ -122,17 +123,14 @@ func generateImportPlan(opts orbOptions, orbVersions []api.OrbVersion) (orbImpor
 
 func applyPlan(opts orbOptions, plan orbImportPlan) error {
 	for _, ns := range plan.NewNamespaces {
-		err := func() error {
-			// Replace with actual namespace creation.
-			return errors.New("not yet implemented")
-		}()
+		_, err := api.CreateImportedNamespace(opts.cl, ns)
 		if err != nil {
 			return fmt.Errorf("unable to create '%s' namespace: %s", ns, err.Error())
 		}
 	}
 
 	for _, o := range plan.NewOrbs {
-		_, err := api.CreateOrb(opts.cl, o.Namespace, o.Name)
+		_, err := api.CreateImportedOrb(opts.cl, o.Namespace, o.Name)
 		if err != nil {
 			return fmt.Errorf("unable to create '%s' orb: %s", o.Name, err.Error())
 		}
@@ -144,7 +142,7 @@ func applyPlan(opts orbOptions, plan orbImportPlan) error {
 			return fmt.Errorf("unable to get orb info at %s/%s: %s", v.Orb.Namespace, v.Orb.Name, err.Error())
 		}
 
-		_, err = api.OrbPublishWithSource(opts.cl, v.Source, resp.Orb.ID, v.Version)
+		_, err = api.OrbImportVersion(opts.cl, v.Source, resp.Orb.ID, v.Version)
 		if err != nil {
 			return fmt.Errorf("unable to publish '%s/%s@%s' with source: %s", v.Orb.Namespace, v.Orb.Name, v.Version, err.Error())
 		}
@@ -153,7 +151,7 @@ func applyPlan(opts orbOptions, plan orbImportPlan) error {
 	return nil
 }
 
-func displayPlan(plan orbImportPlan) {
+func displayPlan(w io.Writer, plan orbImportPlan) {
 	var b strings.Builder
 	b.WriteString("The following actions will be performed:\n")
 
@@ -169,12 +167,14 @@ func displayPlan(plan orbImportPlan) {
 		b.WriteString(fmt.Sprintf("  Import version '%s/%s@%s'\n", v.Orb.Namespace, v.Orb.Name, v.Version))
 	}
 
-	b.WriteString("\nThe following orb versions already exist:\n")
-	for _, e := range plan.AlreadyExistingVersions {
+	for i, e := range plan.AlreadyExistingVersions {
+		if i == 0 {
+			b.WriteString("\nThe following orb versions already exist:\n")
+		}
 		b.WriteString(fmt.Sprintf("  ('%s/%s@%s')\n", e.Orb.Namespace, e.Orb.Name, e.Version))
 	}
 
-	fmt.Println(b.String())
+	fmt.Fprint(w, b.String())
 }
 
 func isNamespace(ref string) bool {

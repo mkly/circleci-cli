@@ -529,13 +529,13 @@ func OrbQuery(cl *graphql.Client, configPath string) (*ConfigResponse, error) {
 	return &response.OrbConfig.ConfigResponse, nil
 }
 
-// OrbPublishWithSource publishes a new version of an orb using the provided source and id.
-func OrbPublishWithSource(cl *graphql.Client, orbSrc string, orbID string, orbVersion string) (*Orb, error) {
+// OrbImportVersion publishes a new version of an orb using the provided source and id.
+func OrbImportVersion(cl *graphql.Client, orbSrc string, orbID string, orbVersion string) (*Orb, error) {
 	var response OrbPublishResponse
 
 	query := `
 		mutation($config: String!, $orbId: UUID!, $version: String!) {
-			publishOrb(
+			importOrbVersion(
 				orbId: $orbId,
 				orbYaml: $config,
 				version: $version
@@ -557,7 +557,7 @@ func OrbPublishWithSource(cl *graphql.Client, orbSrc string, orbID string, orbVe
 
 	err := cl.Run(request, &response)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to publish orb with source")
+		return nil, errors.Wrap(err, "unable to import orb version")
 	}
 
 	if len(response.PublishOrb.Errors) > 0 {
@@ -678,6 +678,44 @@ func OrbID(cl *graphql.Client, namespace string, orb string) (*OrbIDResponse, er
 	}
 
 	return nil, fmt.Errorf("the '%s' orb does not exist in the '%s' namespace. Did you misspell the namespace or the orb name?", orb, namespace)
+}
+
+// CreateImportedNamespace creates an imported namespace with the provided name. An imported namespace
+// does not require organization-level details.
+func CreateImportedNamespace(cl *graphql.Client, name string) (*CreateNamespaceResponse, error) {
+	var response CreateNamespaceResponse
+
+	query := `
+			mutation($name: String!) {
+				importNamespace(
+					name: $name,
+				) {
+					namespace {
+						id
+					}
+					errors {
+						message
+						type
+					}
+				}
+			}`
+
+	request := graphql.NewRequest(query)
+	request.SetToken(cl.Token)
+
+	request.Var("name", name)
+
+	err := cl.Run(request, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(response.CreateNamespace.Errors) > 0 {
+		fmt.Println("hello")
+		return nil, response.CreateNamespace.Errors
+	}
+
+	return &response, nil
 }
 
 func createNamespaceWithOwnerID(cl *graphql.Client, name string, ownerID string) (*CreateNamespaceResponse, error) {
@@ -871,6 +909,48 @@ func CreateOrb(cl *graphql.Client, namespace string, name string) (*CreateOrbRes
 	}
 
 	return createOrbWithNsID(cl, name, response.RegistryNamespace.ID)
+}
+
+// CreateImportedOrb creates (reserves) an imported orb within the provided namespace.
+func CreateImportedOrb(cl *graphql.Client, namespace string, name string) (*CreateOrbResponse, error) {
+	res, err := GetNamespace(cl, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateOrbResponse
+
+	query := `mutation($name: String!, $registryNamespaceId: UUID!){
+				importOrb(
+					name: $name,
+					registryNamespaceId: $registryNamespaceId
+				){
+				    orb {
+				      id
+				    }
+				    errors {
+				      message
+				      type
+				    }
+				}
+}`
+
+	request := graphql.NewRequest(query)
+	request.SetToken(cl.Token)
+
+	request.Var("name", name)
+	request.Var("registryNamespaceId", res.RegistryNamespace.ID)
+
+	err = cl.Run(request, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(response.CreateOrb.Errors) > 0 {
+		return nil, response.CreateOrb.Errors
+	}
+
+	return &response, nil
 }
 
 // TODO(zzak): this function is not really related to the API. Move it to another package?

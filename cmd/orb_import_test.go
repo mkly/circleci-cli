@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/CircleCI-Public/circleci-cli/api"
@@ -624,6 +626,59 @@ var _ = Describe("Import unit testing", func() {
 		})
 	})
 
+	Describe("When testing 'displayPlan'", func() {
+		It("prints out plan correctly to the provided writer", func() {
+			plan := orbImportPlan{
+				NewNamespaces: []string{"namespace1"},
+				NewOrbs: []api.Orb{
+					{Name: "orb", Namespace: "namespace1"},
+				},
+				NewVersions: []api.OrbVersion{
+					{
+						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						Version:   "0.0.1",
+						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Source:    "description: somesource",
+						CreatedAt: "2018-09-24T08:53:37.086Z",
+					},
+					{
+						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						Version:   "0.0.2",
+						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Source:    "description: somesource",
+						CreatedAt: "2018-09-24T08:53:37.086Z",
+					},
+				},
+				AlreadyExistingVersions: []api.OrbVersion{
+					{
+						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						Version:   "0.0.3",
+						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Source:    "description: somesource",
+						CreatedAt: "2018-09-24T08:53:37.086Z",
+					},
+				},
+			}
+
+			var b bytes.Buffer
+			displayPlan(&b, plan)
+
+			expOutput := `The following actions will be performed:
+  Create namespace 'namespace1'
+  Create orb 'namespace1/orb'
+  Import version 'namespace1/orb@0.0.1'
+  Import version 'namespace1/orb@0.0.2'
+
+The following orb versions already exist:
+  ('namespace1/orb@0.0.3')
+`
+
+			actual, err := ioutil.ReadAll(&b)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(fmt.Sprintf("%s", actual)).To(Equal(expOutput))
+		})
+	})
+
 	Describe("When testing 'applyPlan'", func() {
 		var opts orbOptions
 
@@ -636,8 +691,56 @@ var _ = Describe("Import unit testing", func() {
 			}
 		})
 
-		It("errors when creating a namespace", func() {
-			// Not yet implemented.
+		It("errors when creating an imported namespace", func() {
+			plan := orbImportPlan{
+				NewNamespaces: []string{"namespace1"},
+			}
+
+			createNSReq := `{
+				"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
+				"variables": {
+				  "name": "namespace1"
+				}
+			  }`
+
+			createNSResp := `{
+				"createNamespace": {
+					"errors": [{"message": "testerror"}]
+				}
+			}`
+
+			cli.AppendPostHandler("", clitest.MockRequestResponse{
+				Status:   http.StatusOK,
+				Request:  createNSReq,
+				Response: createNSResp,
+			})
+
+			err := applyPlan(opts, plan)
+			Expect(err).To(MatchError("unable to create 'namespace1' namespace: testerror"))
+		})
+
+		It("successfully creates a namespace", func() {
+			plan := orbImportPlan{
+				NewNamespaces: []string{"namespace1"},
+			}
+
+			createNSReq := `{
+				"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
+				"variables": {
+				  "name": "namespace1"
+				}
+			  }`
+
+			createNSResp := `{}`
+
+			cli.AppendPostHandler("", clitest.MockRequestResponse{
+				Status:   http.StatusOK,
+				Request:  createNSReq,
+				Response: createNSResp,
+			})
+
+			err := applyPlan(opts, plan)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("errors when creating an orb and namespace id fetch fails", func() {
@@ -667,7 +770,6 @@ var _ = Describe("Import unit testing", func() {
 
 			err := applyPlan(opts, plan)
 			Expect(err).To(MatchError("unable to create 'orb' orb: the namespace 'namespace1' does not exist. Did you misspell the namespace, or maybe you meant to create the namespace first?"))
-			// Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("errors when creating an orb", func() {
@@ -694,7 +796,7 @@ var _ = Describe("Import unit testing", func() {
 			}`
 
 			createOrbReq := `{
-				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\tcreateOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
+				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
 				"variables": {
 				  "name": "orb",
 				  "registryNamespaceId": "someid1"
@@ -747,7 +849,7 @@ var _ = Describe("Import unit testing", func() {
 			}`
 
 			createOrbReq := `{
-				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\tcreateOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
+				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
 				"variables": {
 				  "name": "orb",
 				  "registryNamespaceId": "someid1"
@@ -794,7 +896,7 @@ var _ = Describe("Import unit testing", func() {
 			}`
 
 			orbPublishReq := `{
-				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\tpublishOrb(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
+				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
 				"variables": {
 				  "config": "",
 				  "orbId": "orbid1",
@@ -846,7 +948,7 @@ var _ = Describe("Import unit testing", func() {
 			}`
 
 			orbPublishReq := `{
-				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\tpublishOrb(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
+				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
 				"variables": {
 				  "config": "",
 				  "orbId": "orbid1",
