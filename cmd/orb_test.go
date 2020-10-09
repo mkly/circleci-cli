@@ -2379,7 +2379,9 @@ foo.bar/account/api`))
                                     id
                                     createdAt
 									name
-									namespace
+									namespace {
+									  name
+									}
                                     categories {
                                       id
                                       name

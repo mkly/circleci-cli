@@ -149,6 +149,19 @@ type CreateNamespaceResponse struct {
 	}
 }
 
+// ImportNamespaceResponse type matches the data shape of the GQL response for
+// importing a namespace
+type ImportNamespaceResponse struct {
+	ImportNamespace struct {
+		Namespace struct {
+			CreatedAt string
+			ID        string
+		}
+
+		Errors GQLErrorsCollection
+	}
+}
+
 // GetOrganizationResponse type wraps the GQL response for fetching an organization and ID.
 type GetOrganizationResponse struct {
 	Organization struct {
@@ -382,7 +395,7 @@ func (orbElement *OrbElement) UnmarshalYAML(unmarshal func(interface{}) error) e
 type Orb struct {
 	ID        string
 	Name      string
-	Namespace string
+	Namespace Namespace
 	CreatedAt string
 
 	Source         string
@@ -394,12 +407,29 @@ type Orb struct {
 		Last30DaysOrganizationCount int
 	}
 
+	ShortName string
+
 	Commands  map[string]OrbElement
 	Jobs      map[string]OrbElement
 	Executors map[string]OrbElement
 	Versions  []OrbVersion
 
 	Categories []OrbCategory
+}
+
+// Shortname returns the orb name without its associated namespace.
+func (o *Orb) AddShortName() error {
+	_, orbName, err := references.SplitIntoOrbAndNamespace(o.Name)
+	if err != nil {
+		return err
+	}
+	o.ShortName = orbName
+	return nil
+}
+
+// Namespace represents the contents of a single namespace.
+type Namespace struct {
+	Name string
 }
 
 // OrbVersion wraps the GQL result used by OrbSource and OrbInfo
@@ -682,8 +712,8 @@ func OrbID(cl *graphql.Client, namespace string, orb string) (*OrbIDResponse, er
 
 // CreateImportedNamespace creates an imported namespace with the provided name. An imported namespace
 // does not require organization-level details.
-func CreateImportedNamespace(cl *graphql.Client, name string) (*CreateNamespaceResponse, error) {
-	var response CreateNamespaceResponse
+func CreateImportedNamespace(cl *graphql.Client, name string) (*ImportNamespaceResponse, error) {
+	var response ImportNamespaceResponse
 
 	query := `
 			mutation($name: String!) {
@@ -710,9 +740,8 @@ func CreateImportedNamespace(cl *graphql.Client, name string) (*CreateNamespaceR
 		return nil, err
 	}
 
-	if len(response.CreateNamespace.Errors) > 0 {
-		fmt.Println("hello")
-		return nil, response.CreateNamespace.Errors
+	if len(response.ImportNamespace.Errors) > 0 {
+		return nil, response.ImportNamespace.Errors
 	}
 
 	return &response, nil
@@ -1211,7 +1240,9 @@ func OrbInfo(cl *graphql.Client, orbRef string) (*OrbVersion, error) {
                                     id
                                     createdAt
 									name
-									namespace
+									namespace {
+									  name
+									}
                                     categories {
                                       id
                                       name
@@ -1388,8 +1419,10 @@ query namespaceOrbs ($namespace: String, $after: String!) {
 			currentCursor = edge.Cursor
 
 			orb := Orb{
-				Name:      edge.Node.Name,
-				Namespace: result.RegistryNamespace.Name,
+				Name: edge.Node.Name,
+				Namespace: Namespace{
+					Name: result.RegistryNamespace.Name,
+				},
 			}
 
 			for _, v := range edge.Node.Versions {

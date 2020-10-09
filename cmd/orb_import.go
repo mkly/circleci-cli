@@ -17,6 +17,13 @@ type orbImportPlan struct {
 	AlreadyExistingVersions []api.OrbVersion
 }
 
+func (o orbImportPlan) isEmpty() bool {
+	n := len(o.NewNamespaces)
+	n += len(o.NewOrbs)
+	n += len(o.NewVersions)
+	return n == 0
+}
+
 func importOrb(opts orbOptions) error {
 	vs, err := versionsToImport(opts)
 	if err != nil {
@@ -29,7 +36,7 @@ func importOrb(opts orbOptions) error {
 	}
 
 	displayPlan(os.Stdout, plan)
-	if !opts.noPrompt && !opts.tty.askUserToConfirm("Are you sure you would like to proceed?") {
+	if !opts.noPrompt && !plan.isEmpty() && !opts.tty.askUserToConfirm("Are you sure you would like to proceed?") {
 		return nil
 	}
 
@@ -66,6 +73,15 @@ func versionsToImport(opts orbOptions) ([]api.OrbVersion, error) {
 		orbVersions = append(orbVersions, obv...)
 	}
 
+	// Add a "short name" (the name of the orb without the namespace name,
+	// needed for API operations)
+	for i := range orbVersions {
+		err := orbVersions[i].Orb.AddShortName()
+		if err != nil {
+			return nil, fmt.Errorf("corrupt orb name: %s", err.Error())
+		}
+	}
+
 	return orbVersions, nil
 }
 
@@ -75,7 +91,7 @@ func generateImportPlan(opts orbOptions, orbVersions []api.OrbVersion) (orbImpor
 
 	// Dedupe namespaces and orbs.
 	for _, o := range orbVersions {
-		ns, orb := o.Orb.Namespace, o.Orb.Name
+		ns, orb := o.Orb.Namespace.Name, o.Orb.ShortName
 		uniqueNamespaces[ns] = true
 		// Use a {orb}:{namespace} key to address cases where orbs have identical names
 		// across distinct namespaces.
@@ -84,7 +100,7 @@ func generateImportPlan(opts orbOptions, orbVersions []api.OrbVersion) (orbImpor
 
 	var plan orbImportPlan
 	for ns := range uniqueNamespaces {
-		ok, err := api.NamespaceExists(opts.cl, ns) // TODO: this implementation will change to include the notion of "imported"
+		ok, err := api.NamespaceExists(opts.cl, ns)
 		if err != nil {
 			return orbImportPlan{}, fmt.Errorf("namespace check failed: %s", err.Error())
 		}
@@ -95,7 +111,7 @@ func generateImportPlan(opts orbOptions, orbVersions []api.OrbVersion) (orbImpor
 	}
 
 	for _, orb := range uniqueOrbs {
-		ok, err := api.OrbExists(opts.cl, orb.Namespace, orb.Name)
+		ok, err := api.OrbExists(opts.cl, orb.Namespace.Name, orb.ShortName)
 		if err != nil {
 			return orbImportPlan{}, fmt.Errorf("orb id check failed: %s", err.Error())
 		}
@@ -106,7 +122,7 @@ func generateImportPlan(opts orbOptions, orbVersions []api.OrbVersion) (orbImpor
 	}
 
 	for _, o := range orbVersions {
-		_, err := api.OrbInfo(opts.cl, fmt.Sprintf("%s/%s@%s", o.Orb.Namespace, o.Orb.Name, o.Version))
+		_, err := api.OrbInfo(opts.cl, fmt.Sprintf("%s@%s", o.Orb.Name, o.Version))
 		if _, ok := err.(*api.ErrOrbVersionNotExists); ok {
 			plan.NewVersions = append(plan.NewVersions, o)
 			continue
@@ -130,21 +146,21 @@ func applyPlan(opts orbOptions, plan orbImportPlan) error {
 	}
 
 	for _, o := range plan.NewOrbs {
-		_, err := api.CreateImportedOrb(opts.cl, o.Namespace, o.Name)
+		_, err := api.CreateImportedOrb(opts.cl, o.Namespace.Name, o.ShortName)
 		if err != nil {
 			return fmt.Errorf("unable to create '%s' orb: %s", o.Name, err.Error())
 		}
 	}
 
 	for _, v := range plan.NewVersions {
-		resp, err := api.OrbID(opts.cl, v.Orb.Namespace, v.Orb.Name)
+		resp, err := api.OrbID(opts.cl, v.Orb.Namespace.Name, v.Orb.ShortName)
 		if err != nil {
-			return fmt.Errorf("unable to get orb info at %s/%s: %s", v.Orb.Namespace, v.Orb.Name, err.Error())
+			return fmt.Errorf("unable to get orb info at %s: %s", v.Orb.Name, err.Error())
 		}
 
 		_, err = api.OrbImportVersion(opts.cl, v.Source, resp.Orb.ID, v.Version)
 		if err != nil {
-			return fmt.Errorf("unable to publish '%s/%s@%s' with source: %s", v.Orb.Namespace, v.Orb.Name, v.Version, err.Error())
+			return fmt.Errorf("unable to publish '%s@%s' with source: %s", v.Orb.Name, v.Version, err.Error())
 		}
 	}
 
@@ -160,18 +176,24 @@ func displayPlan(w io.Writer, plan orbImportPlan) {
 	}
 
 	for _, o := range plan.NewOrbs {
-		b.WriteString(fmt.Sprintf("  Create orb '%s/%s'\n", o.Namespace, o.Name))
+		b.WriteString(fmt.Sprintf("  Create orb '%s'\n", o.Name))
 	}
 
 	for _, v := range plan.NewVersions {
-		b.WriteString(fmt.Sprintf("  Import version '%s/%s@%s'\n", v.Orb.Namespace, v.Orb.Name, v.Version))
+		b.WriteString(fmt.Sprintf("  Import version '%s@%s'\n", v.Orb.Name, v.Version))
 	}
 
 	for i, e := range plan.AlreadyExistingVersions {
 		if i == 0 {
 			b.WriteString("\nThe following orb versions already exist:\n")
 		}
-		b.WriteString(fmt.Sprintf("  ('%s/%s@%s')\n", e.Orb.Namespace, e.Orb.Name, e.Version))
+		b.WriteString(fmt.Sprintf("  ('%s@%s')\n", e.Orb.Name, e.Version))
+	}
+
+	b.WriteString("\n")
+
+	if plan.isEmpty() {
+		b.WriteString("Nothing to do!\n")
 	}
 
 	fmt.Fprint(w, b.String())

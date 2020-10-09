@@ -38,7 +38,7 @@ var _ = Describe("Import unit testing", func() {
 			}
 
 			infoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "namespace1/orb@0.0.1"
 				}
@@ -64,32 +64,34 @@ var _ = Describe("Import unit testing", func() {
 			}
 
 			infoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "namespace1/orb@0.0.1"
 				}
 			  }`
 
 			infoResp := `{
-				"orbVersion": {
-					"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-					"version": "0.0.1",
-					"orb": {
-							"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-							"createdAt": "2018-09-24T08:53:37.086Z",
-							"name": "namespace1/orb",
-							"namespace": "namespace1",
-							"versions": [
-								{
-									"version": "0.0.1",	
-									"createdAt": "2018-10-11T22:12:19.477Z"
-								}
-							]
-					},
-					"source": "description: somesource",
-					"createdAt": "2018-09-24T08:53:37.086Z"
-				}
-			}`
+					"orbVersion": {
+						"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						"version": "0.0.1",
+						"orb": {
+								"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+								"createdAt": "2018-09-24T08:53:37.086Z",
+								"name": "namespace1/orb",
+								"namespace": {
+									"name": "namespace1"
+								},
+								"versions": [
+									{
+										"version": "0.0.1",
+										"createdAt": "2018-10-11T22:12:19.477Z"
+									}
+								]
+						},
+						"source": "description: somesource",
+						"createdAt": "2018-09-24T08:53:37.086Z"
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -107,7 +109,8 @@ var _ = Describe("Import unit testing", func() {
 					Orb: api.Orb{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Name:      "namespace1/orb",
-						Namespace: "namespace1",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 						Versions: []api.OrbVersion{
 							{Version: "0.0.1", CreatedAt: "2018-10-11T22:12:19.477Z"},
 						},
@@ -128,12 +131,12 @@ var _ = Describe("Import unit testing", func() {
 			}
 
 			infoReq := `{
-				"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
-				"variables": {
-				  "after": "",
-				  "namespace": "namespace1"
-				}
-			  }	`
+					"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
+					"variables": {
+					  "after": "",
+					  "namespace": "namespace1"
+					}
+				  }	`
 
 			infoResp := `{}`
 
@@ -156,42 +159,42 @@ var _ = Describe("Import unit testing", func() {
 			}
 
 			listReq := `{
-				"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
-				"variables": {
-				  "after": "",
-				  "namespace": "namespace1"
-				}
-			  }	`
+					"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
+					"variables": {
+					  "after": "",
+					  "namespace": "namespace1"
+					}
+				  }	`
 
 			listResp := `{
-				"registryNamespace": {
-					"name": "namespace1",
-					"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-					"orbs": {
-						"edges": [
-							{
-								"node": {
-									"name": "namespace1/orb",
-									"versions": [
-										{
-											"source": "description: somesource",
-											"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-											"version": "0.0.1",
-											"createdAt": "2018-09-24T08:53:37.086Z"
-										},
-										{
-											"source": "description: someothersource",
-											"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-											"version": "0.0.2",
-											"createdAt": "2018-09-24T08:53:37.086Z"
-										}
-									]
+					"registryNamespace": {
+						"name": "namespace1",
+						"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						"orbs": {
+							"edges": [
+								{
+									"node": {
+										"name": "namespace1/orb",
+										"versions": [
+											{
+												"source": "description: somesource",
+												"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+												"version": "0.0.1",
+												"createdAt": "2018-09-24T08:53:37.086Z"
+											},
+											{
+												"source": "description: someothersource",
+												"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+												"version": "0.0.2",
+												"createdAt": "2018-09-24T08:53:37.086Z"
+											}
+										]
+									}
 								}
-							}
-						]
+							]
+						}
 					}
-				}
-			}`
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -208,7 +211,8 @@ var _ = Describe("Import unit testing", func() {
 					Source:  "description: somesource",
 					Orb: api.Orb{
 						Name:      "namespace1/orb",
-						Namespace: "namespace1",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
@@ -218,7 +222,8 @@ var _ = Describe("Import unit testing", func() {
 					Source:  "description: someothersource",
 					Orb: api.Orb{
 						Name:      "namespace1/orb",
-						Namespace: "namespace1",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
@@ -234,70 +239,72 @@ var _ = Describe("Import unit testing", func() {
 			}
 
 			listReq := `{
-				"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
-				"variables": {
-				  "after": "",
-				  "namespace": "namespace1"
-				}
-			  }	`
+					"query": "\nquery namespaceOrbs ($namespace: String, $after: String!) {\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tname\n\t\t\tid\n\t\t\torbs(first: 20, after: $after) {\n\t\t\t\tedges {\n\t\t\t\t\tcursor\n\t\t\t\t\tnode {\n\t\t\t\t\t\tversions(count: 1) {\n\t\t\t\t\t\t\tsource\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tversion\n\t\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t\t}\n\t\t\t\t\t\tname\n\t\t\t\t\t\tid\n\t\t\t\t\t\tcreatedAt\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tpageInfo {\n\t\t\t\t\thasNextPage\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n",
+					"variables": {
+					  "after": "",
+					  "namespace": "namespace1"
+					}
+				  }	`
 
 			listResp := `{
-				"registryNamespace": {
-					"name": "namespace1",
-					"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-					"orbs": {
-						"edges": [
-							{
-								"node": {
-									"name": "namespace1/orb",
-									"versions": [
-										{
-											"source": "description: somesource",
-											"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-											"version": "0.0.1",
-											"createdAt": "2018-09-24T08:53:37.086Z"
-										},
-										{
-											"source": "description: someothersource",
-											"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-											"version": "0.0.2",
-											"createdAt": "2018-09-24T08:53:37.086Z"
-										}
-									]
+					"registryNamespace": {
+						"name": "namespace1",
+						"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						"orbs": {
+							"edges": [
+								{
+									"node": {
+										"name": "namespace1/orb",
+										"versions": [
+											{
+												"source": "description: somesource",
+												"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+												"version": "0.0.1",
+												"createdAt": "2018-09-24T08:53:37.086Z"
+											},
+											{
+												"source": "description: someothersource",
+												"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+												"version": "0.0.2",
+												"createdAt": "2018-09-24T08:53:37.086Z"
+											}
+										]
+									}
 								}
-							}
-						]
+							]
+						}
 					}
-				}
-			}`
+				}`
 
 			infoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "namespace2/orb2@3.3.3"
 				}
 			  }`
 
 			infoResp := `{
-				"orbVersion": {
-					"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-					"version": "3.3.3",
-					"orb": {
-							"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
-							"createdAt": "2018-09-24T08:53:37.086Z",
-							"name": "namespace2/orb2",
-							"namespace": "namespace2",
-							"versions": [
-								{
-									"version": "3.3.3",	
-									"createdAt": "2018-10-11T22:12:19.477Z"
-								}
-							]
-					},
-					"source": "description: somesource",
-					"createdAt": "2018-09-24T08:53:37.086Z"
-				}
-			}`
+					"orbVersion": {
+						"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+						"version": "3.3.3",
+						"orb": {
+								"id": "bb604b45-b6b0-4b81-ad80-796f15eddf87",
+								"createdAt": "2018-09-24T08:53:37.086Z",
+								"name": "namespace2/orb2",
+								"namespace": {
+									"name": "namespace2"
+								},
+								"versions": [
+									{
+										"version": "3.3.3",
+										"createdAt": "2018-10-11T22:12:19.477Z"
+									}
+								]
+						},
+						"source": "description: somesource",
+						"createdAt": "2018-09-24T08:53:37.086Z"
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -319,7 +326,8 @@ var _ = Describe("Import unit testing", func() {
 					Source:  "description: somesource",
 					Orb: api.Orb{
 						Name:      "namespace1/orb",
-						Namespace: "namespace1",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
@@ -329,7 +337,8 @@ var _ = Describe("Import unit testing", func() {
 					Source:  "description: someothersource",
 					Orb: api.Orb{
 						Name:      "namespace1/orb",
-						Namespace: "namespace1",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
@@ -340,7 +349,8 @@ var _ = Describe("Import unit testing", func() {
 					Orb: api.Orb{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Name:      "namespace2/orb2",
-						Namespace: "namespace2",
+						ShortName: "orb2",
+						Namespace: api.Namespace{Name: "namespace2"},
 						Versions: []api.OrbVersion{
 							{Version: "3.3.3", CreatedAt: "2018-10-11T22:12:19.477Z"},
 						},
@@ -371,34 +381,35 @@ var _ = Describe("Import unit testing", func() {
 					Version: "0.0.1",
 					Source:  "description: somesource",
 					Orb: api.Orb{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
 			}
 
 			nsReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			nsResp := `{}`
 
 			orbExistsReq := `{
-				"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
-				"variables": {
-				  "name": "namespace1/orb",
-				  "namespace": "namespace1"
-				}
-			  }`
+					"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
+					"variables": {
+					  "name": "namespace1/orb",
+					  "namespace": "namespace1"
+					}
+				  }`
 
 			orbExistsResp := `{}`
 
 			orbInfoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "namespace1/orb@0.0.1"
 				}
@@ -427,13 +438,13 @@ var _ = Describe("Import unit testing", func() {
 			Expect(plan).To(Equal(orbImportPlan{
 				NewNamespaces: []string{"namespace1"},
 				NewOrbs: []api.Orb{
-					{Name: "orb", Namespace: "namespace1"},
+					{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 				},
 				NewVersions: []api.OrbVersion{
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.1",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
@@ -448,8 +459,9 @@ var _ = Describe("Import unit testing", func() {
 					Version: "0.0.1",
 					Source:  "description: somesource",
 					Orb: api.Orb{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
@@ -458,34 +470,35 @@ var _ = Describe("Import unit testing", func() {
 					Version: "0.0.2",
 					Source:  "description: somesource",
 					Orb: api.Orb{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
 			}
 
 			nsReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "%s"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "%s"
+					}
+				  }`
 
 			nsResp := `{}`
 
 			orbExistsReq := `{
-				"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
-				"variables": {
-				  "name": "%s",
-				  "namespace": "%s"
-				}
-			  }`
+					"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
+					"variables": {
+					  "name": "%s",
+					  "namespace": "%s"
+					}
+				  }`
 
 			orbExistsResp := `{}`
 
 			orbInfoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "%s"
 				}
@@ -519,20 +532,20 @@ var _ = Describe("Import unit testing", func() {
 			Expect(plan).To(Equal(orbImportPlan{
 				NewNamespaces: []string{"namespace1"},
 				NewOrbs: []api.Orb{
-					{Name: "orb", Namespace: "namespace1"},
+					{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 				},
 				NewVersions: []api.OrbVersion{
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.1",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.2",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
@@ -547,52 +560,53 @@ var _ = Describe("Import unit testing", func() {
 					Version: "0.0.1",
 					Source:  "description: somesource",
 					Orb: api.Orb{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 					CreatedAt: "2018-09-24T08:53:37.086Z",
 				},
 			}
 
 			nsReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "%s"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "%s"
+					}
+				  }`
 
 			nsResp := `{
-				"registryNamespace": {
-					"id": "someid"
-				}
-			}`
+					"registryNamespace": {
+						"id": "someid"
+					}
+				}`
 
 			orbExistsReq := `{
-				"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
-				"variables": {
-				  "name": "%s",
-				  "namespace": "%s"
-				}
-			  }`
+					"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t\tid\n\t\t  }\n\t  }\n\t  ",
+					"variables": {
+					  "name": "%s",
+					  "namespace": "%s"
+					}
+				  }`
 
 			orbExistsResp := `{
-				"orb": {
-					"id": "someid"
-				}
-			}`
+					"orb": {
+						"id": "someid"
+					}
+				}`
 
 			orbInfoReq := `{
-				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
+				"query": "query($orbVersionRef: String!) {\n\t\t\t    orbVersion(orbVersionRef: $orbVersionRef) {\n\t\t\t        id\n                                version\n                                orb {\n                                    id\n                                    createdAt\n\t\t\t\t\t\t\t\t\tname\n\t\t\t\t\t\t\t\t\tnamespace {\n\t\t\t\t\t\t\t\t\t  name\n\t\t\t\t\t\t\t\t\t}\n                                    categories {\n                                      id\n                                      name\n                                    }\n\t                            statistics {\n\t\t                        last30DaysBuildCount,\n\t\t                        last30DaysProjectCount,\n\t\t                        last30DaysOrganizationCount\n\t                            }\n                                    versions(count: 200) {\n                                        createdAt\n                                        version\n                                    }\n                                }\n                                source\n                                createdAt\n\t\t\t    }\n\t\t      }",
 				"variables": {
 				  "orbVersionRef": "%s"
 				}
 			  }`
 
 			orbInfoResp := `{
-				"orbVersion": {
-					"id": "someid"
-				}
-			}`
+					"orbVersion": {
+						"id": "someid"
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -617,7 +631,7 @@ var _ = Describe("Import unit testing", func() {
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.1",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
@@ -631,20 +645,20 @@ var _ = Describe("Import unit testing", func() {
 			plan := orbImportPlan{
 				NewNamespaces: []string{"namespace1"},
 				NewOrbs: []api.Orb{
-					{Name: "orb", Namespace: "namespace1"},
+					{Name: "namespace1/orb", Namespace: api.Namespace{Name: "namespace1"}},
 				},
 				NewVersions: []api.OrbVersion{
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.1",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.2",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
@@ -653,7 +667,7 @@ var _ = Describe("Import unit testing", func() {
 					{
 						ID:        "bb604b45-b6b0-4b81-ad80-796f15eddf87",
 						Version:   "0.0.3",
-						Orb:       api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:       api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 						Source:    "description: somesource",
 						CreatedAt: "2018-09-24T08:53:37.086Z",
 					},
@@ -671,8 +685,8 @@ var _ = Describe("Import unit testing", func() {
 
 The following orb versions already exist:
   ('namespace1/orb@0.0.3')
-`
 
+`
 			actual, err := ioutil.ReadAll(&b)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(fmt.Sprintf("%s", actual)).To(Equal(expOutput))
@@ -697,17 +711,17 @@ The following orb versions already exist:
 			}
 
 			createNSReq := `{
-				"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			createNSResp := `{
-				"createNamespace": {
-					"errors": [{"message": "testerror"}]
-				}
-			}`
+					"importNamespace": {
+						"errors": [{"message": "testerror"}]
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -725,11 +739,11 @@ The following orb versions already exist:
 			}
 
 			createNSReq := `{
-				"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\tmutation($name: String!) {\n\t\t\t\timportNamespace(\n\t\t\t\t\tname: $name,\n\t\t\t\t) {\n\t\t\t\t\tnamespace {\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t\t\terrors {\n\t\t\t\t\t\tmessage\n\t\t\t\t\t\ttype\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			createNSResp := `{}`
 
@@ -747,18 +761,19 @@ The following orb versions already exist:
 			plan := orbImportPlan{
 				NewOrbs: []api.Orb{
 					{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 				},
 			}
 
 			getNSReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			getNSResp := `{}`
 
@@ -769,45 +784,46 @@ The following orb versions already exist:
 			})
 
 			err := applyPlan(opts, plan)
-			Expect(err).To(MatchError("unable to create 'orb' orb: the namespace 'namespace1' does not exist. Did you misspell the namespace, or maybe you meant to create the namespace first?"))
+			Expect(err).To(MatchError("unable to create 'namespace1/orb' orb: the namespace 'namespace1' does not exist. Did you misspell the namespace, or maybe you meant to create the namespace first?"))
 		})
 
 		It("errors when creating an orb", func() {
 			plan := orbImportPlan{
 				NewOrbs: []api.Orb{
 					{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 				},
 			}
 
 			getNSReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			getNSResp := `{
-				"registryNamespace": {
-					"id": "someid1"
-				}
-			}`
+					"registryNamespace": {
+						"id": "someid1"
+					}
+				}`
 
 			createOrbReq := `{
-				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
-				"variables": {
-				  "name": "orb",
-				  "registryNamespaceId": "someid1"
-				}
-			  }`
+					"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
+					"variables": {
+					  "name": "orb",
+					  "registryNamespaceId": "someid1"
+					}
+				  }`
 
 			createOrbResp := `{
-				"createOrb": {
-					"errors": [{"message": "testerror"}]
-				}
-			}`
+					"createOrb": {
+						"errors": [{"message": "testerror"}]
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -821,40 +837,40 @@ The following orb versions already exist:
 			})
 
 			err := applyPlan(opts, plan)
-			Expect(err).To(MatchError("unable to create 'orb' orb: testerror"))
-			// Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).To(MatchError("unable to create 'namespace1/orb' orb: testerror"))
 		})
 
 		It("creates an orb successfully", func() {
 			plan := orbImportPlan{
 				NewOrbs: []api.Orb{
 					{
-						Name:      "orb",
-						Namespace: "namespace1",
+						Name:      "namespace1/orb",
+						ShortName: "orb",
+						Namespace: api.Namespace{Name: "namespace1"},
 					},
 				},
 			}
 
 			getNSReq := `{
-				"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
-				"variables": {
-				  "name": "namespace1"
-				}
-			  }`
+					"query": "\n\t\t\t\tquery($name: String!) {\n\t\t\t\t\tregistryNamespace(\n\t\t\t\t\t\tname: $name\n\t\t\t\t\t){\n\t\t\t\t\t\tid\n\t\t\t\t\t}\n\t\t\t }",
+					"variables": {
+					  "name": "namespace1"
+					}
+				  }`
 
 			getNSResp := `{
-				"registryNamespace": {
-					"id": "someid1"
-				}
-			}`
+					"registryNamespace": {
+						"id": "someid1"
+					}
+				}`
 
 			createOrbReq := `{
-				"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
-				"variables": {
-				  "name": "orb",
-				  "registryNamespaceId": "someid1"
-				}
-			  }`
+					"query": "mutation($name: String!, $registryNamespaceId: UUID!){\n\t\t\t\timportOrb(\n\t\t\t\t\tname: $name,\n\t\t\t\t\tregistryNamespaceId: $registryNamespaceId\n\t\t\t\t){\n\t\t\t\t    orb {\n\t\t\t\t      id\n\t\t\t\t    }\n\t\t\t\t    errors {\n\t\t\t\t      message\n\t\t\t\t      type\n\t\t\t\t    }\n\t\t\t\t}\n}",
+					"variables": {
+					  "name": "orb",
+					  "registryNamespaceId": "someid1"
+					}
+				  }`
 
 			createOrbResp := `{}`
 
@@ -878,37 +894,37 @@ The following orb versions already exist:
 				NewVersions: []api.OrbVersion{
 					{
 						Version: "0.0.1",
-						Orb:     api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:     api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 					},
 				},
 			}
 
 			orbIDReq := `{
-				"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t  id\n\t\t}\n\t  }\n\t  ",
-				"variables": {
-				  "name": "namespace1/orb",
-				  "namespace": "namespace1"
-				}
-			  }`
+					"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t  id\n\t\t}\n\t  }\n\t  ",
+					"variables": {
+					  "name": "namespace1/orb",
+					  "namespace": "namespace1"
+					}
+				  }`
 
 			orbIDResp := `{
-				"orb": {"id": "orbid1"}
-			}`
+					"orb": {"id": "orbid1"}
+				}`
 
 			orbPublishReq := `{
-				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
-				"variables": {
-				  "config": "",
-				  "orbId": "orbid1",
-				  "version": "0.0.1"
-				}
-			  }`
+					"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
+					"variables": {
+					  "config": "",
+					  "orbId": "orbid1",
+					  "version": "0.0.1"
+					}
+				  }`
 
 			orbPublishResp := `{
-				"publishOrb": {
-					"errors": [{"message": "testerror"}]
-				}
-			}`
+					"publishOrb": {
+						"errors": [{"message": "testerror"}]
+					}
+				}`
 
 			cli.AppendPostHandler("", clitest.MockRequestResponse{
 				Status:   http.StatusOK,
@@ -930,31 +946,31 @@ The following orb versions already exist:
 				NewVersions: []api.OrbVersion{
 					{
 						Version: "0.0.1",
-						Orb:     api.Orb{Name: "orb", Namespace: "namespace1"},
+						Orb:     api.Orb{Name: "namespace1/orb", ShortName: "orb", Namespace: api.Namespace{Name: "namespace1"}},
 					},
 				},
 			}
 
 			orbIDReq := `{
-				"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t  id\n\t\t}\n\t  }\n\t  ",
-				"variables": {
-				  "name": "namespace1/orb",
-				  "namespace": "namespace1"
-				}
-			  }`
+					"query": "\n\tquery ($name: String!, $namespace: String) {\n\t\torb(name: $name) {\n\t\t  id\n\t\t}\n\t\tregistryNamespace(name: $namespace) {\n\t\t  id\n\t\t}\n\t  }\n\t  ",
+					"variables": {
+					  "name": "namespace1/orb",
+					  "namespace": "namespace1"
+					}
+				  }`
 
 			orbIDResp := `{
-				"orb": {"id": "orbid1"}
-			}`
+					"orb": {"id": "orbid1"}
+				}`
 
 			orbPublishReq := `{
-				"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
-				"variables": {
-				  "config": "",
-				  "orbId": "orbid1",
-				  "version": "0.0.1"
-				}
-			  }`
+					"query": "\n\t\tmutation($config: String!, $orbId: UUID!, $version: String!) {\n\t\t\timportOrbVersion(\n\t\t\t\torbId: $orbId,\n\t\t\t\torbYaml: $config,\n\t\t\t\tversion: $version\n\t\t\t) {\n\t\t\t\torb {\n\t\t\t\t\tversion\n\t\t\t\t}\n\t\t\t\terrors { message }\n\t\t\t}\n\t\t}\n\t",
+					"variables": {
+					  "config": "",
+					  "orbId": "orbid1",
+					  "version": "0.0.1"
+					}
+				  }`
 
 			orbPublishResp := `{}`
 

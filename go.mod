@@ -12,6 +12,7 @@ require (
 	github.com/gobuffalo/buffalo-plugins v1.9.3 // indirect
 	github.com/gobuffalo/flect v0.0.0-20181210151238-24a2b68e0316 // indirect
 	github.com/gobuffalo/packr/v2 v2.0.0-rc.13
+	github.com/google/go-cmp v0.3.0
 	github.com/google/go-github v15.0.0+incompatible // indirect
 	github.com/google/go-querystring v0.0.0-20170111101155-53e6ce116135 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf // indirect
