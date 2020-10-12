@@ -2,4 +2,4 @@ Usage:
   runner token create <resource-class> <nickname> [flags]
 
 Flags:
-      --config   'true' to emit a CircleCI runner config template with the token
+      --config string   'macos', 'linux' to emit a CircleCI runner config template with the token

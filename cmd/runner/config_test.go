@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,8 +21,33 @@ func TestAgentConfig_WriteYaml(t *testing.T) {
 		CreatedAt:     time.Date(2020, 03, 04, 16, 13, 53, 00, time.UTC),
 	}
 
-	b := bytes.Buffer{}
-	err := NewAgentConfig(token).WriteYaml(&b)
-	assert.NilError(t, err)
-	golden.Assert(t, b.String(), "expected-config.yaml")
+	tests := []struct {
+		platform string
+		wantErr  string
+	}{
+		{
+			platform: "linux",
+		},
+		{
+			platform: "macos",
+		},
+		{
+			platform: "unknown",
+			wantErr:  "unknown platform",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.platform, func(t *testing.T) {
+			b := bytes.Buffer{}
+			config, err := NewAgentConfig(token, tt.platform)
+			if tt.wantErr == "" {
+				assert.NilError(t, err)
+				err = config.WriteYaml(&b)
+				assert.NilError(t, err)
+				golden.Assert(t, b.String(), fmt.Sprintf("expected-config-%s.yaml", tt.platform))
+			} else {
+				assert.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
 }
